@@ -1,3 +1,4 @@
+use log::info;
 use rusqlite::Connection;
 use uuid::Uuid;
 
@@ -29,7 +30,7 @@ pub fn locate_database() -> Option<Database> {
 
         let path = basepath
             .join("history.sqlite");
-        println!("checking path: {}", &path.as_os_str().to_str().unwrap());
+        info!("checking path: {}", &path.as_os_str().to_str().unwrap());
         if path.exists() {
             Some(Database { location: path, tmp_location: None })
         } else {
@@ -51,7 +52,7 @@ pub fn copy_database(database: &mut Database) {
 
 pub fn get_history(database: Database) -> History {
     let db_path = database.tmp_location.unwrap();
-    println!("{}", &db_path.as_os_str().to_str().unwrap());
+    info!("{}", &db_path.as_os_str().to_str().unwrap());
     let conn = Connection::open(db_path).unwrap();
 
     let mut history_query = conn.prepare("SELECT title, url, atime, redirect FROM History").unwrap();
