@@ -2,11 +2,18 @@ mod browser;
 use browser::qutebrowser;
 use browser::firefox;
 
+#[derive(Debug, Clone)]
+pub enum Browser {
+    Firefox,
+    Qutebrowser
+}
+
 
 #[derive(Debug, Clone)]
 pub struct History {
     pub url: String,
     pub title: Option<String>,
+    pub browser: Browser,
 }
 
 pub fn get_history() -> Vec<History> {
@@ -18,7 +25,7 @@ pub fn get_history() -> Vec<History> {
     let qb_history = qutebrowser::get_history(db);
 
     qb_history.entries.iter().for_each(|entry| {
-        history.push(History { url: entry.url.clone(), title: Some(entry.title.clone()) })
+        history.push(History { url: entry.url.clone(), title: Some(entry.title.clone()), browser: Browser::Qutebrowser})
     });
 
     // firefox
@@ -26,7 +33,7 @@ pub fn get_history() -> Vec<History> {
     for mut db in dbs {
         browser::firefox::copy_database(&mut db);
         browser::firefox::get_history(db).entries.iter().for_each(|entry| {
-            history.push(History { url: entry.url.clone(), title: entry.title.clone() })
+            history.push(History { url: entry.url.clone(), title: entry.title.clone(), browser: Browser::Firefox })
         });
     }
 
