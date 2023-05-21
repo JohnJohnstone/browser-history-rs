@@ -39,6 +39,7 @@ name = "browser-history"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "log",
  "rusqlite",
  "rust-ini",
  "uuid",
