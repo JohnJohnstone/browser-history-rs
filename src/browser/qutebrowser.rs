@@ -20,10 +20,10 @@ pub struct Database {
 
 use std::path::{Path, PathBuf};
 
-// order
-// QUTE_DATA_DIR=/home/john/.local/share/qutebrowser
-// XDG_DATA_HOME
-// XDG_DATA_DIRS=/home/john/.guix-profile/share:/home/john/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share
+// check if QUTE_DATA_DIR is set
+// for example: QUTE_DATA_DIR=/home/john/.local/share/qutebrowser
+// if not use default path constructed from home directory
+// /home/USERNAME/.local/share/qutebrowser/history.sqlite
 pub fn locate_database() -> Option<Database> {
     if let Ok(qute_data_dir) = std::env::var("QUTE_DATA_DIR") {
         let basepath = Path::new(&qute_data_dir);
@@ -37,7 +37,16 @@ pub fn locate_database() -> Option<Database> {
             None
         }
     } else {
-        None
+        let home = std::env::var("HOME").unwrap();
+	let basepath = Path::new(&home).join(".local/share/qutebrowser");
+	let path = basepath
+	    .join("history.sqlite");
+	info!("checking path: {}", &path.as_os_str().to_str().unwrap());
+	if path.exists() {
+	    Some(Database { location: path, tmp_location: None })
+	} else {
+	    None
+	}
     }
 }
 
