@@ -5,9 +5,8 @@ use browser::firefox;
 #[derive(Debug, Clone)]
 pub enum Browser {
     Firefox,
-    Qutebrowser
+    Qutebrowser,
 }
-
 
 #[derive(Debug, Clone)]
 pub struct History {
@@ -17,7 +16,7 @@ pub struct History {
 }
 
 pub fn get_history() -> Vec<History> {
-    let mut history:Vec<History> = Vec::new();
+    let mut history: Vec<History> = Vec::new();
 
     // qutebrowser
     let mut db = qutebrowser::locate_database().unwrap();
@@ -25,16 +24,27 @@ pub fn get_history() -> Vec<History> {
     let qb_history = qutebrowser::get_history(db);
 
     qb_history.entries.iter().for_each(|entry| {
-        history.push(History { url: entry.url.clone(), title: Some(entry.title.clone()), browser: Browser::Qutebrowser})
+        history.push(History {
+            url: entry.url.clone(),
+            title: Some(entry.title.clone()),
+            browser: Browser::Qutebrowser,
+        })
     });
 
     // firefox
     let dbs = firefox::locate_databases(firefox::Scope::CurrentUser).unwrap();
     for mut db in dbs {
         browser::firefox::copy_database(&mut db);
-        browser::firefox::get_history(db).entries.iter().for_each(|entry| {
-            history.push(History { url: entry.url.clone(), title: entry.title.clone(), browser: Browser::Firefox })
-        });
+        browser::firefox::get_history(db)
+            .entries
+            .iter()
+            .for_each(|entry| {
+                history.push(History {
+                    url: entry.url.clone(),
+                    title: entry.title.clone(),
+                    browser: Browser::Firefox,
+                })
+            });
     }
 
     history
