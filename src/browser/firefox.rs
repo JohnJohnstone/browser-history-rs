@@ -1,3 +1,55 @@
+#[derive(Debug)]
+struct FirefoxProfile {
+    name: String,
+    path: PathBuf,
+}
+
+impl FirefoxProfile {
+    fn new(name: String, path: PathBuf) -> Self {
+        Self { name, path }
+    }
+
+    // find all profiles under the current usershome directory using the logic fromthe python script above
+    fn find_all() -> Vec<Self> {
+        let home_dir = std::env::var("HOME").unwrap();
+        let mozilla_ff_path = Path::new(&home_dir).join(".mozilla").join("firefox");
+
+        // get all directories in the firefox directory
+        let dirs = std::fs::read_dir(mozilla_ff_path).unwrap();
+
+        // skip dir if dir name starts with a dot or matches
+        // known dirs = "Crash Reports", "Pending Pings" ;
+        // then check remaining directories for places.sqlite
+        // if found, add to profiles using folder name as profile name
+        let mut profiles: Vec<FirefoxProfile> = Vec::new();
+        let known_dirs = vec!["Crash Reports", "Pending Pings"];
+        // filter out known directories
+        let dirs = dirs.filter(|d| {
+            let dir_name = d.as_ref().unwrap().file_name();
+            let dir_name = dir_name.to_str().unwrap();
+            !dir_name.starts_with(".") && !known_dirs.contains(&dir_name)
+        });
+
+        // iterate over the remaining directories checking for places.sqlite
+        let profiles = dirs
+            .filter_map(|d| {
+                let dir = d.unwrap();
+                let dir_name = dir.file_name();
+                let dir_name = dir_name.to_str().unwrap();
+                let dir_path = dir.path();
+                let places_path = dir_path.join("places.sqlite");
+                if places_path.exists() {
+                    Some(Self::new(dir_name.to_string(), dir_path))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        profiles
+    }
+}
+
 use std::path::{Path, PathBuf};
 
 use rusqlite::Connection;
