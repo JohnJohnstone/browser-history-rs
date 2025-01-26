@@ -56,7 +56,7 @@ use rusqlite::Connection;
 use uuid::Uuid;
 
 pub struct History {
-    pub entries: Vec<HistoryEntry>
+    pub entries: Vec<HistoryEntry>,
 }
 
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -78,7 +78,7 @@ pub struct Database {
 pub enum Scope {
     CurrentUser,
     User(String),
-    System
+    System,
 }
 
 fn parse_profile_ini(path: PathBuf) -> Vec<String> {
@@ -97,45 +97,14 @@ fn parse_profile_ini(path: PathBuf) -> Vec<String> {
 }
 
 pub fn locate_databases(scope: Scope) -> Option<Vec<Database>> {
-    match scope {
-        Scope::CurrentUser => {
-            if let Ok(home_dir) = std::env::var("HOME") {
-
-                let mut databases = Vec::new();
-
-                let user_profile_ini_path = Path::new(&home_dir)
-                    .join(".mozilla")
-                    .join("firefox")
-                    .join("profiles.ini");
-
-                if user_profile_ini_path.exists() {
-                    let profiles = parse_profile_ini(user_profile_ini_path);
-
-                    profiles.iter().for_each(|p| {
-                        let db_path = Path::new(&home_dir)
-                            .join(".mozilla")
-                            .join("firefox")
-                            .join(p)
-                            .join("places.sqlite");
-                        databases.push(Database {
-                            location: db_path,
-                            tmp_location: None
-                        });
-                    });
-
-                    Some(databases)
-
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-
-        },
-        Scope::User(_) => todo!(),
-        Scope::System => todo!(),
-    }
+    let profile = FirefoxProfile::find_all();
+    println!("{:?}", profile);
+    let db_path = profile.first().unwrap().path.join("places.sqlite");
+    let databases = vec![Database {
+        location: db_path,
+        tmp_location: None,
+    }];
+    Some(databases)
 }
 
 pub fn copy_database(database: &mut Database) {
@@ -150,34 +119,39 @@ pub fn copy_database(database: &mut Database) {
 pub fn get_history(database: Database) -> History {
     let db_path = database.tmp_location.unwrap();
     let conn = Connection::open(db_path).unwrap();
-    let mut history_query = conn.prepare("SELECT url, title, last_visit_date, description FROM moz_places").unwrap();
+    let mut history_query = conn
+        .prepare("SELECT url, title, last_visit_date, description FROM moz_places")
+        .unwrap();
 
-    let history_rows = history_query.query_map([], |row| {
-        Ok(HistoryEntry {
-            url: row.get(0).unwrap(),
-            title: row.get(1).unwrap(),
+    let history_rows = history_query
+        .query_map([], |row| {
+            Ok(HistoryEntry {
+                url: row.get(0).unwrap(),
+                title: row.get(1).unwrap(),
 
-            last_visit_date: {
-                let last_visit_date: Option<i64> = row.get(2).unwrap();
-                if last_visit_date.is_some() {
-                    let date_timestamp = last_visit_date.unwrap() / 1000; // convert from microseconds to milliseconds
-                    let naive_date_time = NaiveDateTime::from_timestamp_millis(date_timestamp).unwrap();
-                    let time = naive_date_time.format("%d/%m/%Y %H:%M:%S");
-                    let date_time = DateTime::<Utc>::from_utc(naive_date_time, Utc);
-                    Some(date_time)
-                } else {
-                    None
-                }
-            },
-            description: row.get(3).unwrap(),
+                last_visit_date: {
+                    let last_visit_date: Option<i64> = row.get(2).unwrap();
+                    if last_visit_date.is_some() {
+                        let date_timestamp = last_visit_date.unwrap() / 1000; // convert from microseconds to milliseconds
+                        let naive_date_time =
+                            NaiveDateTime::from_timestamp_millis(date_timestamp).unwrap();
+                        let time = naive_date_time.format("%d/%m/%Y %H:%M:%S");
+                        let date_time = DateTime::<Utc>::from_utc(naive_date_time, Utc);
+                        Some(date_time)
+                    } else {
+                        None
+                    }
+                },
+                description: row.get(3).unwrap(),
+            })
         })
-    }).unwrap();
+        .unwrap();
 
     let mut history = Vec::new();
 
-    history_rows.into_iter().for_each(|h| {
-        history.push(h.unwrap())
-    });
+    history_rows
+        .into_iter()
+        .for_each(|h| history.push(h.unwrap()));
 
     History { entries: history }
 }
